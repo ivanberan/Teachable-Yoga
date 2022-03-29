@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="" />
+    <meta name="author" content="" />
+    <title>Teachable Machine</title>
+    <!-- Favicon-->
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <!-- Core theme CSS (includes Bootstrap)-->
+    <link href="css/styles.css" rel="stylesheet" />
+</head>
+
+<body>
+    <!-- Responsive navbar-->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">Teachable Machine</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
+                aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
+
+        </div>
+    </nav>
+    <!-- Page content-->
+    <div class="container">
+        <div class="text-center mt-5">
+            <h1>Teachable Machine Image Model</h1>
+            <p class="lead">Yoga pose recognition - choose pose</p>
+            <div id="print"></div>
+            <div id="countdown" style='font-size: 30px'>
+            </div>
+            <div>
+                <div style="flex-direction:row">
+                    <img id='im0' src='https://www.yogajournal.com/wp-content/uploads/2020/12/2hp_290_1721_bjk.jpg'
+                        onclick='setExe(0)' style='width:200px;height:200px;' />
+                    <img id='im1'
+                        src='https://www.verywellfit.com/thmb/uX2gqxsyWmP8bUzvjbGHkqn9aP8=/3000x2000/filters:fill(FFDB5D,1)/23-3567098-LotusPose-006-a297dfb82b274118bfb408406fa3c576.jpg'
+                        onclick='setExe(1)' style='width:200px;height:200px;' />
+                    <img id='im2'
+                        src='http://www.yogagirlfitness.com/wp-content/uploads/sites/13/2017/08/mountain-pose.jpg'
+                        onclick='setExe(2)' style='width:200px;height:200px;' />
+                    <img id='im3' src='https://new.yogapractice.com/wp-content/uploads/2019/02/Plank-Pose-1-800x534.jpg'
+                        onclick='setExe(3)' style='width:200px;height:200px;' />
+                    <img id='im4'
+                        src='https://static.nike.com/a/images/t_PDP_1280_v1/f_auto,q_auto:eco/z4wrco2kadfqiwlbid8b/yoga-luxe-high-waisted-7-8-infinalon-leggings-JvXgfP.png'
+                        onclick='setExe(4)' style='width:200px;height:200px;' />
+                </div>
+            </div>
+
+            <button type="button" onclick="init()">Start</button>
+
+            <div><canvas id="canvas"></canvas></div>
+            <div id="label-container"></div>
+            <div id="mostProbable"></div>
+            <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+            <script
+                src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
+            <script type="text/javascript">
+                // More API functions here:
+                // https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/pose
+
+                // the link to your model provided by Teachable Machine export panel
+                const URL = "https://teachablemachine.withgoogle.com/models/BCyDM0X0V/";
+                let model, webcam, ctx, labelContainer, maxPredictions, mostProbableContainer;
+                // od tu
+
+                var elem = document.getElementById('countdown');
+                var chosenExe = Math.floor(Math.random() * 5);
+                var timerFlag = false
+
+                //////////
+                let cTime = 30;
+                function myTimer() {
+                    if (cTime == 0) {
+                        elem.innerHTML = "Done";
+                    } else {
+                        if (timerFlag == false) {
+                            return
+                        } else {
+                            elem.innerHTML = cTime;
+                            cTime = cTime - 1;
+                            setTimeout(myTimer, 1000);
+                        }
+                    }
+                }
+                //////
+
+
+
+                function countdown() {
+                    if (timeLeft == -1) {
+                        clearTimeout(timerId);
+                        doSomething();
+                    } else {
+                        elem.innerHTML = timeLeft + ' seconds remaining';
+                        timeLeft--;
+                    }
+                }
+                function setExe(no) {
+                    console.log("set")
+                    if (no == 0) {
+                        document.getElementById("im0").style.border = "10px solid orange";
+                    } else {
+                        document.getElementById("im0").style.border = "0px solid #555";
+                    }
+                    if (no == 1) {
+                        document.getElementById("im1").style.border = "10px solid orange";
+                    } else {
+                        document.getElementById("im1").style.border = "0px solid #555";
+                    }
+                    if (no == 2) {
+                        document.getElementById("im2").style.border = "10px solid orange";
+                    } else {
+                        document.getElementById("im2").style.border = "0px solid #555";
+                    }
+                    if (no == 3) {
+                        document.getElementById("im3").style.border = "10px solid orange";
+                    } else {
+                        document.getElementById("im3").style.border = "0px solid #555";
+                    }
+                    if (no == 4) {
+                        document.getElementById("im4").style.border = "10px solid orange";
+                    } else {
+                        document.getElementById("im4").style.border = "0px solid #555";
+                    }
+                    chosenExe = no;
+                }
+                async function init() {
+                    const modelURL = URL + "model.json";
+                    const metadataURL = URL + "metadata.json";
+
+                    // load the model and metadata
+                    // Refer to tmImage.loadFromFiles() in the API to support files from a file picker
+                    // Note: the pose library adds a tmPose object to your window (window.tmPose)
+                    model = await tmPose.load(modelURL, metadataURL);
+                    maxPredictions = model.getTotalClasses();
+
+                    // Convenience function to setup a webcam
+                    const size = 500;
+                    const flip = true; // whether to flip the webcam
+                    webcam = new tmPose.Webcam(size, size, flip); // width, height, flip
+                    await webcam.setup(); // request access to the webcam
+                    await webcam.play();
+                    window.requestAnimationFrame(loop);
+
+                    // append/get elements to the DOM
+                    const canvas = document.getElementById("canvas");
+                    canvas.width = size; canvas.height = size;
+                    ctx = canvas.getContext("2d");
+                    mostProbableContainer = document.getElementById("label-container");
+                    labelContainer = document.getElementById("label-container");
+                    for (let i = 0; i < maxPredictions; i++) { // and class labels
+                        labelContainer.appendChild(document.createElement("div"));
+                    }
+                }
+
+                async function loop(timestamp) {
+                    webcam.update(); // update the webcam frame
+                    await predict();
+                    window.requestAnimationFrame(loop);
+                }
+
+                async function predict() {
+                    // Prediction #1: run input through posenet
+                    // estimatePose can take in an image, video or canvas html element
+                    const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
+                    // Prediction 2: run input through teachable machine classification model
+                    const prediction = await model.predict(posenetOutput);
+
+                    const mostProbable = [];
+
+                    for (let i = 0; i < maxPredictions; i++) {
+                        mostProbable[i] = parseFloat(prediction[i].probability.toFixed(2));
+                        const classPrediction =
+                            prediction[i].className + ": " + prediction[i].probability.toFixed(2);
+                        labelContainer.childNodes[i].innerHTML = classPrediction;
+                    }
+                    //mostProbableContainer=Math.max(mostProbable)
+                    //console.log(mostProbable)
+
+                    //console.log(Math.max.apply(null, mostProbable))
+                    //console.log(mostProbable.indexOf(Math.max.apply(null, mostProbable)))
+                    if (mostProbable.indexOf(Math.max.apply(null, mostProbable)) === chosenExe) {
+                        document.body.style.backgroundColor = "#00cc44";
+                        if (!timerFlag) {
+                            cTime = 30;
+                            timerFlag = true
+
+                            myTimer();
+
+                            /*
+                            var timeLeft = 30;
+                            var timerId = setInterval(countdown, 1000);
+                                */
+                        }
+
+                    }
+                    else {
+                        timerFlag = false
+                        /*
+                        timeLeft = 30
+*/
+                        document.body.style.backgroundColor = "#ff4d4d";
+                        elem.innerHTML = ""
+                    }
+                    // finally draw the poses
+                    drawPose(pose);
+                }
+
+                function drawPose(pose) {
+                    if (webcam.canvas) {
+                        ctx.drawImage(webcam.canvas, 0, 0);
+                        // draw the keypoints and skeleton
+                        if (pose) {
+                            const minPartConfidence = 0.5;
+                            tmPose.drawKeypoints(pose.keypoints, minPartConfidence, ctx);
+                            tmPose.drawSkeleton(pose.keypoints, minPartConfidence, ctx);
+                        }
+                    }
+                }
+            </script>
+
+
+
+
+        </div>
+    </div>
+    <!-- Bootstrap core JS-->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Core theme JS-->
+    <script src="js/scripts.js"></script>
+</body>
+
+</html>
